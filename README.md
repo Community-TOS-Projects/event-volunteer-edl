@@ -1,2 +1,2 @@
-# event-volunteer-edl
-Engineering Decision Log for event-volunteer-hub, documenting project decisions, rationale, planning, implementation, verification, and project evolution
+# Event Volunteer EDL
+<code>event-volunteer-edl</code> is the public Engineering Decision Log for Event Volunteer Hub project, <code>event-volunteer-hub</code>. It preserves the planning, engineering decisions, rationale, implementation records, verification results, and project history needed to support collaboration and future development.
