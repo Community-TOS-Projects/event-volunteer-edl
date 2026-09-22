@@ -6,8 +6,9 @@
 - Application repository: `Community-TOS-Projects/event-volunteer-hub`
 - Related issue(s):
   - [event-volunteer-hub#4](https://github.com/Community-TOS-Projects/event-volunteer-hub/issues/4)
-- Related pull request(s): TBD
-- Related EDL entries:
+- Related pull request(s): 
+  - [event-volunteer-hub#7](https://github.com/Community-TOS-Projects/event-volunteer-hub/issues/7)
+- Related EDL entries: N/A
 - Affected files/documentation:
   - `README.md`
 

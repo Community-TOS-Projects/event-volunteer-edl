@@ -6,12 +6,14 @@
 - Application repository: `Community-TOS-Projects/event-volunteer-hub`
 - Related issue(s):
   - [event-volunteer-hub#5](https://github.com/Community-TOS-Projects/event-volunteer-hub/issues/5)
-- Related pull request(s): TBD
+- Related pull request(s): 
+  - [event-volunteer-hub#8](https://github.com/Community-TOS-Projects/event-volunteer-hub/issues/8)
 - Related EDL entries:
   - EDL-0001: Select MeetHub as the Initial Inherited Codebase
   - EDL-0004: Establish Reproducible Local Setup and Administration Guidance
 - Affected files/documentation:
   - `config/settings.py`
+  - `README.md`
 
 ## Context
 
@@ -74,8 +76,9 @@ After adding `localhost` to `ALLOWED_HOSTS`, the application was accessible at:
 http://localhost:8000/
 ```
 
+Both `http://localhost:8000/` and `http://127.0.0.1:8000/` were added to the local setup instructions in `README.md`, along with the corresponding admin access URLs.
+
 ## Follow-Up Work
 
-- Add `http://localhost:8000/` and `http://127.0.0.1:8000/` to the local setup instructions in `README.md`.
 - Document that a deployment hostname must be added to `ALLOWED_HOSTS` before the application is deployed under that hostname.
 - Add an automated configuration check or deployment checklist item to verify that local and production hostnames are intentionally configured.

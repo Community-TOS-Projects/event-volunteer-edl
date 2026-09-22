@@ -6,8 +6,9 @@
 - Application repository: `Community-TOS-Projects/event-volunteer-hub`
 - Related issue(s):
   - [event-volunteer-hub#3](https://github.com/Community-TOS-Projects/event-volunteer-hub/issues/3)
-- Related pull request(s): TBD
-- Related EDL entries:
+- Related pull request(s): 
+  - [event-volunteer-hub#6](https://github.com/Community-TOS-Projects/event-volunteer-hub/issues/6)
+- Related EDL entries: N/A
 - Affected files/documentation:
   - `meethub/events/views.py`
 
