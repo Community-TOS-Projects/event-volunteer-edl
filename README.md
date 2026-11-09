@@ -95,6 +95,13 @@ If a substantive decision changes, create a new EDL and reference or supersede t
 | [EDL-0004](EDL-0004_SetupGuidance.md) | Establish Reproducible Local Setup and Administration Guidance | Accepted |
 | [EDL-0005](EDL-0005_Localhost.md) | Enable Localhost Access for Local Development | Accepted |
 | [EDL-0006](EDL-0006_EstablishProjectIdentity.md) | Establish Event Volunteer Hub Project Identity and Licensing | Accepted |
+| [EDL-0007](EDL-0007_AdoptProposal_v2.0.md) | Adopt Proposal v2.0 as the Event Volunteer Hub Project Direction | Accepted | 
+
+### Data Model and Scheduling 
+
+| EDL | Decision | Status | 
+|---|---|---| 
+| [EDL-0008](EDL-0008_RelationalDataModel.md) | Expand the Relational Data Model for Scheduling and Attendance | Under review | 
 
 ## Related Repository
 
