@@ -1,151 +1,189 @@
-# EDL-0008: Expand the Relational Data Model for Scheduling and Attendance 
- 
-- Status: Under review 
-- Date: 2026-11-09 
-- Decision owners: Geopestejunior and BDeha 
-- Related repositories: 
-  - Target application repository: [event-volunteer-hub](https://github.com/Community-TOS-Projects/event-volunteer-hub) 
+# EDL-0008: Expand the Relational Data Model for Scheduling and Participation
 
-- Related Issue: 
-  - [event-volunteer-hub#28](https://github.com/Community-TOS-Projects/event-volunteer-hub/issues/28) 
+- Status: Under review
+- Date: 2026-11-09
+- Decision owners: Geopestejunior and BDeha
+- Related repositories:
+  - Target application repository: [event-volunteer-hub](https://github.com/Community-TOS-Projects/event-volunteer-hub)
+- Related Issue:
+  - [event-volunteer-hub#28](https://github.com/Community-TOS-Projects/event-volunteer-hub/issues/28)
+- Related Pull Request:
+  - [event-volunteer-hub#29](https://github.com/Community-TOS-Projects/event-volunteer-hub/pull/29)
+- Related EDL entries:
+  - EDL-0001: Select MeetHub as the Initial Inherited Codebase
+  - EDL-0006: Establish Event Volunteer Hub Project Identity and Licensing
+  - EDL-0007: Adopt Proposal v2.0 as the Event Volunteer Hub Project Direction
 
-- Related Pull Request: 
-  - [event-volunteer-hub#29](https://github.com/Community-TOS-Projects/event-volunteer-hub/pull/29) 
+- Affected areas: Event, Shift, Attendance, SignUp, Organization, account compatibility, migrations, tests, and Django administration
 
-- Related EDL entries: 
-  - EDL-0001: Select MeetHub as the Initial Inherited Codebase 
-  - EDL-0006: Establish Event Volunteer Hub Project Identity and Licensing 
-  - EDL-0007: Adopt Proposal v2.0 as the Event Volunteer Hub Project Direction 
+## Context
 
-- Affected areas: Event, Shift, Attendance, Organization, account compatibility, migrations, tests, and Django administration 
- 
-## Context 
- 
-Issue #28 proposed extending the inherited Event Volunteer Hub event structure to support volunteer scheduling. The inherited MeetHub implementation provided a single event time field and no mechanism for representing event duration, volunteer shifts, organizational hosting, or attendance tracking. 
- 
-The project's long-term goals include supporting nonprofit organizations, volunteer scheduling, attendance tracking, and volunteer-management workflows. Supporting those capabilities required expanding the application's data model while remaining compatible with the existing event and account architecture. 
- 
-During implementation, additional compatibility issues, relationship questions, validation requirements, and testing gaps were identified. 
- 
-## Decision 
- 
-Expand the relational data model to support event scheduling, volunteer shifts, attendance tracking, and organizations, with validation and administrative support. 
- 
-### Event scheduling 
- 
-- Replace `Event.time` with `Event.start_time` and `Event.end_time`. 
-- Order events by `date`, `start_time`, and `end_time`. 
-- Rename the existing event time field through a database migration to preserve its data. 
- 
-### Volunteer shifts 
- 
-- Add a `Shift` model with `name`, `event`, `start_time`, `end_time`, `description`, `capacity`, and `volunteers`. 
-- Associate shifts with events through `event = ForeignKey(Event, related_name='shifts')`. 
-- Associate volunteers with shifts through `volunteers = ManyToManyField(Account, related_name='shifts')`. 
-- Require a shift to start before it ends and to remain within its event's time range. 
-- Enforce model validation on save by calling `full_clean()` before the database write. 
-- Use `capacity` rather than the proposed `max_volunteers` field name. 
- 
-### Organizations 
- 
-- Add an `Organization` model with `name`, `description`, `website`, `contact_email`, `created_at`, and `updated_at`. 
+Issue #28 proposed extending the inherited Event Volunteer Hub event structure to support volunteer scheduling. The inherited MeetHub implementation provided a single event time field and no mechanism for representing event duration, volunteer shifts, organizational hosting, or attendance tracking.
 
-- Do not add direct relationships to accounts or events in this work; organization ownership remains an open architectural decision. 
- 
-### Attendance 
- 
-- Add an `Attendance` model with `user`, `event`, `shift`, `status`, `hours_recorded`, `created_at`, and `updated_at`. 
-- Support the statuses `pending`, `approved`, `attended`, and `cancelled`. 
-- Enforce uniqueness for each `(user, shift)` pair so a volunteer cannot have multiple attendance records for the same shift. 
+PR27 and PR39 later clarified that RSVP, Sign-Up, Assignment, and Attendance are separate concepts with different responsibilities and lifecycle rules. The initial PR29 implementation did not fully separate those concepts: `Shift.volunteers` functioned as an implicit assignment mechanism, and `Attendance` stored workflow-like statuses in addition to participation information.
 
-### Account compatibility and administration 
+The model redesign was therefore extended beyond the original scheduling work. The implementation in scope is limited to architecture and data-model changes. Frontend interfaces, endpoint workflows, coordinator approval screens, notifications, organization ownership, and waitlists remain follow-up work.
 
-- Use the custom `accounts.Account` model and its email-based identity rather than assuming Django's default `User` model or a `username` field. 
-- Update affected attendance searches, displays, tests, and event attendee rendering to use valid account fields and `get_fullname()`. 
-- Register `Organization`, `Shift`, and `Attendance` in Django Admin, and update Event and Attendance administration for the new fields and valid Account lookups. 
- 
-### Migration 
- 
-The implementation includes migration `0014_alter_event_options_rename_time_event_start_time_and_more`, which: 
+## Decision
 
-- Renames `Event.time` to `Event.start_time` and adds `Event.end_time`. 
-- Renames `Shift.max_volunteers` to `Shift.capacity` and adds `Shift.name`. 
-- Updates Event ordering. 
- 
-## Rationale 
- 
-The original event structure could not represent event duration, volunteer shifts, attendance records, or organizational participation. Separate event start and end times provide a complete event schedule, while shifts model volunteer work periods within that schedule. Attendance provides a structured record of participation and volunteer hours. 
- 
-Organization support establishes a foundation for future hosting functionality without prematurely deciding how organizations relate to accounts or events. Compatibility updates were necessary because inherited templates, tests, and administrative components assumed a `username` attribute that the project's email-based custom Account model does not provide. 
- 
-Together, these changes establish a foundation for future volunteer-management workflows while preserving existing event-start-time data. 
- 
-## Alternatives Considered 
- 
-### Keep a single event time field 
- 
-Rejected. A single time cannot represent event duration or support volunteer-shift scheduling. 
- 
-### Store volunteer participation directly on events 
- 
-Rejected. This would not support multiple volunteer shifts within one event. 
- 
-### Keep `max_volunteers` as the capacity field name 
- 
-Rejected. `capacity` communicates the same meaning with simpler terminology. 
- 
-### Allow unrestricted shift scheduling 
- 
-Rejected. Shifts outside event boundaries create scheduling inconsistencies and weaken data integrity. 
- 
-### Continue using username-based lookups 
+Expand the relational data model to support event scheduling, volunteer shifts, sign-ups, confirmed assignments, attendance tracking, organizations, capacity, and distinct participation concepts.
 
-Rejected. The custom Account model has no username field; email-based lookups are consistent with the implemented authentication architecture. 
+### Event scheduling
 
-## Consequences 
+- Replace `Event.time` with `Event.start_time` and `Event.end_time`.
+- Order events by `date`, `start_time`, and `end_time`.
+- Preserve the existing event time through the `0014` migration.
+- Replace the legacy `num_of_attendees` field with `capacity` using `RenameField` in migration `0015`.
+- Add positive event capacity validation in the model.
+- Treat legacy `capacity=0` as the existing meaning for now. A separate future decision will define how to backfill or migrate unset legacy capacity values.
+- Add `signup_mode` with direct and approval choices for future workflows.
 
-### Positive 
+### Volunteer shifts
 
-- Events represent complete schedules, and multiple shifts can be associated with each event. 
-- Attendance tracking and volunteer assignments can be modeled independently from event creation. 
-- Validation prevents invalid shift time ranges. 
-- Existing event timing data is preserved by the field rename. 
-- Compatibility issues with the custom Account model are addressed. 
-- Administrative support is available for the new entities. 
-- Automated tests verify cascade-deletion behavior. 
+- Add a `Shift` model with `name`, `event`, `start_time`, `end_time`, `description`, and `capacity`.
+- Associate shifts with events through `event = ForeignKey(Event, related_name='shifts')`.
+- Replace `Shift.volunteers` with Sign-Up records.
+- Require shifts to start before they end and remain within the event time range.
+- Reject overlapping shifts for the same event.
+- Reject shifts that cross midnight.
+- Enforce model validation on save with `full_clean()`.
 
-### Tradeoffs 
+### Sign-Up and assignment
 
-- The database model and its relationships are more complex and require ongoing maintenance and testing. 
-- Future scheduling workflows must respect event and shift time-range constraints. 
-- Organization ownership and other relationship decisions remain unresolved. 
+- Add a `SignUp` model with `user`, `event`, optional `shift`, `status`, `created_at`, and `updated_at`.
+- Use `pending`, `confirmed`, `declined`, and `cancelled` as the stored status values.
+- Pending and confirmed Sign-Ups reserve capacity; declined and cancelled Sign-Ups remain history and release capacity.
+- Support Event-level reserve Sign-Ups with no selected Shift.
+- Use a confirmed Sign-Up as the Assignment record. Do not add a separate Assignment model initially.
+- When a reserve is assigned to a Shift, update the existing Sign-Up's optional Shift relation instead of creating a duplicate record.
+- Prevent duplicate active Shift Sign-Ups and duplicate active Event-level reserves through conditional uniqueness constraints.
 
-## Evidence 
+### RSVP and event capacity
 
-Validation included Django model tests, migration verification, manual application testing, Django Admin verification, shift validation testing, and event scheduling testing. 
+- Keep `Event.attendees` as the separate RSVP relationship.
+- Count the distinct union of RSVP attendees and active Sign-Up users for Event participation.
+- Count pending and confirmed Sign-Ups as active capacity users.
+- Count each person once toward Event capacity even if they RSVP or Sign-Up for multiple Shifts.
+- Count Shift capacity using distinct pending or confirmed Sign-Ups assigned to that Shift.
 
-Specific checks included: 
+### Organizations
 
-- Event forms and templates were updated for `start_time` and `end_time`; event detail, create, update, and delete workflows were reviewed for compatibility. 
-- Attendance administration uses valid email-based account lookups. Event attendee rendering uses `get_fullname()`, and event tests use email-based accounts. 
-- Factory Boy integrations were corrected to use `factory.django.DjangoModelFactory`, preventing test-discovery failures. 
-- Tests verify that deleting an event removes its associated Shift and Attendance records, and deleting an account removes its associated Attendance records. 
-- Tests verify that shifts remain within event boundaries, shifts ending before they begin are rejected, and shifts crossing midnight are rejected. 
- 
-The design keeps `Event.attendees`, `Shift.volunteers`, and `Attendance` as distinct concepts: 
+- Add an `Organization` model with `name`, `description`, `website`, `contact_email`, `created_at`, and `updated_at`.
+- Do not add direct relationships to accounts or events in this work; organization ownership remains follow-up work.
 
-- `Event.attendees` represents event-level RSVP or intent to attend. 
-- `Shift.volunteers` represents assignment to a specific volunteer work period. 
-- `Attendance` represents participation status and recorded hours. 
+### Attendance
 
-Current application workflows update only `Event.attendees`; no implemented workflow automatically synchronizes `Shift.volunteers` or `Attendance`. This separation is intentional, but future workflows may require additional consistency rules. 
+- Retain an `Attendance` model with `user`, `event`, optional `shift`, `status`, `hours_recorded`, `created_at`, and `updated_at`.
+- Store only attendance states: `attended` and `absent`.
+- Remove sign-up and approval states from Attendance.
+- Require an Attendance Shift, when present, to belong to the same Event.
+- Preserve uniqueness for each `(user, shift)` pair.
 
-## Follow-Up Work 
+### Account compatibility and administration
 
-- Add shift creation and editing interfaces and volunteer shift sign-up workflows. 
-- Enforce shift capacity automatically. 
-- Decide organization-to-account and organization-to-event relationships. 
-- Clarify how `Event.attendees`, `Shift.volunteers`, and `Attendance` should interact. 
-- Consider shift-overlap validation and support for overnight events or shifts. 
-- Add volunteer scheduling reports, attendance approval workflows, and event and shift calendar views. 
-- Clarify whether Attendance may exist without an associated Shift. 
+- Use the custom `accounts.Account` model and email-based identity rather than Django's default User assumptions or a `username` field.
+- Update affected account lookups, displays, factories, and tests to use valid Account fields and `get_fullname()`.
+- Register Organization and Shift administration and update Event and Attendance administration for the revised fields.
+
+### Migration
+
+The implementation includes migrations:
+
+- `0014_alter_event_options_rename_time_event_start_time_and_more`
+- `0015_remove_event_num_of_attendees_and_more`
+- `0016_alter_attendance_status_alter_event_capacity`
+
+Migration `0014` renames `Event.time` to `Event.start_time`, adds `Event.end_time`, renames `Shift.max_volunteers` to `capacity`, adds `Shift.name`, and updates Event ordering.
+
+Migration `0015` renames `num_of_attendees` to `capacity`, removes `Shift.volunteers`, adds `signup_mode`, changes Attendance to attendance-only choices, and creates `SignUp` with active Sign-Up uniqueness constraints.
+
+Migration `0016` aligns the final Attendance status choices and Event capacity field state.
+
+The existing migrations do not automatically migrate historical `Shift.volunteers` rows into Sign-Up records or transform historical Attendance workflow records into Sign-Up records. These remain documented follow-up work rather than silent data transformations.
+
+## Rationale
+
+The original Event structure could not represent event duration, volunteer shifts, sign-up lifecycle states, or separate attendance and assignment records. Separate Event start and end times complete the schedule, while Shifts model volunteer work periods within that schedule.
+
+RSVP remains the Event attendee relationship, Sign-Up represents a volunteer request or reserve, a confirmed Sign-Up represents assignment, and Attendance represents recorded attendance and hours. Keeping these concepts separate prevents workflow status fields from being mixed into RSVP or attendance records.
+
+This data-model foundation preserves existing Event timing data and existing architecture while avoiding UI, coordinator, notification, organization ownership, and task-workflow assumptions that have not been implemented.
+
+## Alternatives Considered
+
+### Keep a single Event time field
+
+Rejected. A single time cannot represent Event duration or support shift scheduling.
+
+### Keep `Shift.volunteers` and `Attendance` as workflow structures
+
+Rejected. `Shift.volunteers` is an implicit assignment mechanism, while Attendance workflow statuses conflate requests and actual attendance.
+
+### Add a separate Assignment model now
+
+Rejected for the initial implementation. A confirmed Sign-Up can serve as the Assignment record, with the optional Shift updated for reserve placement.
+
+### Keep legacy `num_of_attendees=0` meaning unchanged
+
+Rejected as a future positive-capacity design. This contribution leaves the existing value and backfill behavior unchanged; a later decision will address legacy unset capacity separately.
+
+### Automatically migrate legacy Attendance workflow rows
+
+Rejected for this contribution. Different environments may contain sign-up states with nonzero hours, and silently changing or discarding those values would risk data loss.
+
+### Continue using username-based lookups
+
+Rejected. The custom Account model uses email identity and `get_fullname()`; Account-compatible lookups are consistent with its authentication architecture.
+
+## Consequences
+
+### Positive
+
+- Events represent complete schedules.
+- RSVP, Sign-Up, confirmed Assignment, and Attendance have separate model responsibilities.
+- Pending and confirmed Sign-Ups can reserve Event and Shift capacity through model logic.
+- Shift and attendance validation improves data integrity.
+- Existing Event timing data is preserved through migration.
+- Custom Account compatibility is addressed in tests, forms, views, and administration.
+- Automated tests cover Event, Shift, Attendance, forms, views, and RSVP workflows.
+
+### Tradeoffs
+
+- The participation schema is more complex and requires future workflow and migration handling.
+- Legacy Shift and Attendance data is not automatically transformed.
+- Legacy capacity values and backfill remain unresolved.
+- Organization ownership, coordinator approval, notifications, waitlists, and Position/Task workflows remain outside this contribution.
+- `signup_mode` exists in the schema but is not exposed in user-facing interfaces.
+
+## Evidence
+
+Validation included Django model tests, migration verification, view tests, form tests, Shift validation testing, RSVP attendance testing, Django Admin review, and Event scheduling testing.
+
+Specific checks include:
+
+- Event forms and templates use `start_time` and `end_time`.
+- Event tests use the custom Account model and capacity values.
+- Attendance tests verify attendance-specific statuses and Shift/Event relationship validation.
+- Shift tests verify containment, non-overlap, adjacent boundaries, and cross-midnight rejection.
+- Deletion tests verify that deleting an Event removes its associated Shifts and Attendance records and deleting an Account removes its Attendance records.
+- RSVP tests verify attend and leave behavior, duplicate attendance, anonymous-user redirects, nonexistent Events, and Event detail redirects.
+- Factory definitions use `capacity`, current time fields, and DjangoModelFactory compatibility.
+
+The Events test suite can be run with:
+
+```text
+python manage.py test meethub.events
+```
+
+## Follow-Up Work
+
+- Backfill or otherwise resolve legacy Event capacity values in all relevant environments.
+- Decide and implement a data-preserving migration for legacy `Shift.volunteers` records.
+- Decide and implement a safe migration for legacy Attendance workflow records.
+- Add frontend RSVP and Sign-Up interfaces.
+- Add direct and approval-based Sign-Up endpoints and capacity checks.
+- Add reserve placement and cancellation workflows.
+- Add coordinator approval interfaces.
+- Decide organization-to-account and organization-to-event relationships.
+- Consider waitlists, Position, and Task assignment workflows.
+- Consider shift-overlap, overnight scheduling, and Attendance consistency rules in later work.
